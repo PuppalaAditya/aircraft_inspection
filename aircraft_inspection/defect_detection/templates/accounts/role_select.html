@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>Aircraft Defect Detection · Landing</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+
+  <style>
+    :root{
+      --bg1:#0b0f17; --bg2:#0e1624; --accent:#00d4ff; --accent-2:#7c4dff;
+      --glass:rgba(255,255,255,.06);
+    }
+    html,body{height:100%}
+    body{
+      background:
+        radial-gradient(1200px 800px at 80% -20%, #182338 0%, transparent 45%),
+        radial-gradient(1200px 800px at 0% 120%, #120d26 0%, transparent 45%),
+        linear-gradient(120deg, var(--bg1), var(--bg2));
+      color:#e8edf6; overflow-x:hidden;
+    }
+    /* kill any stray spinners from base */
+    .animate-spin,.animate-spin-slow,.loader,.spinner,[data-loader]{display:none!important}
+
+    /* Background layers */
+    .bg-layer{position:absolute; inset:0; z-index:0; pointer-events:none}
+    #stars{z-index:0}
+    .orb{filter:blur(40px); opacity:.35; mix-blend-mode:screen}
+    .orb--a{position:absolute; width:45vmax; height:45vmax; left:-10vmax; top:-12vmax;
+            background:radial-gradient(circle at 30% 30%, #00d4ff66, transparent 60%)}
+    .orb--b{position:absolute; width:38vmax; height:38vmax; right:-8vmax; top:14vmax;
+            background:radial-gradient(circle at 70% 40%, #7c4dff55, transparent 60%)}
+    .orb--c{position:absolute; width:32vmax; height:32vmax; left:12vmax; bottom:-14vmax; opacity:.18;
+            background:radial-gradient(circle at 50% 50%, #00ffaacc, transparent 60%)}
+    .grid-bg{
+      background:
+        linear-gradient(transparent 24px, rgba(255,255,255,.05) 25px) 0 0 / 30px 30px,
+        linear-gradient(90deg, transparent 24px, rgba(255,255,255,.05) 25px) 0 0 / 30px 30px;
+      -webkit-mask-image: radial-gradient(1100px 700px at 50% 40%, #000 45%, transparent 80%);
+              mask-image: radial-gradient(1100px 700px at 50% 40%, #000 45%, transparent 80%);
+      animation:grid-move 40s linear infinite
+    }
+    @keyframes grid-move{from{transform:translateY(0)} to{transform:translateY(30px)}}
+    .noise{background:url('https://grainy-gradients.vercel.app/noise.svg'); opacity:.05; mix-blend-mode:soft-light}
+
+    /* Utility */
+    .container{max-width:1100px; margin-inline:auto; padding-inline:1rem}
+    .mark{
+      background:linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      filter:drop-shadow(0 2px 16px rgba(0,212,255,.35));
+    }
+    .glass{
+      background:linear-gradient(180deg, var(--glass), rgba(255,255,255,.04));
+      border:1px solid rgba(255,255,255,.08);
+      backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .btn{
+      position:relative; overflow:hidden; color:white;
+      border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(135deg, rgba(0,212,255,.20), rgba(124,77,255,.18));
+      transition:transform .15s ease, box-shadow .2s ease;
+    }
+    .btn:hover{transform:translateY(-1px) scale(1.01); box-shadow:0 12px 35px rgba(124,77,255,.25)}
+    .btn::before{
+      content:""; position:absolute; inset:-120% -60%;
+      background:conic-gradient(from 0deg, transparent, rgba(0,212,255,.4), transparent 30%);
+      animation:sweep 3.5s linear infinite
+    }
+    @keyframes sweep{to{transform:rotate(360deg)}}
+    .btn > span{position:relative; z-index:1}
+
+    .glow{
+      border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04);
+      transition:box-shadow .3s, border-color .3s, transform .15s; color:#e8edf6
+    }
+    .glow:focus{outline:none; border-color:rgba(0,212,255,.6);
+      box-shadow:0 0 0 4px rgba(0,212,255,.15), 0 0 32px rgba(0,212,255,.18);
+      transform:translateY(-1px)
+    }
+
+    /* reveal helpers */
+    .reveal{opacity:0; transform:translateY(20px)}
+  </style>
+</head>
+
+<body class="min-h-screen relative">
+  <!-- Background stack -->
+  <canvas id="stars" class="bg-layer"></canvas>
+  <div class="bg-layer orb orb--a"></div>
+  <div class="bg-layer orb orb--b"></div>
+  <div class="bg-layer orb orb--c"></div>
+  <div class="bg-layer grid-bg"></div>
+  <div class="bg-layer noise"></div>
+
+  <!-- CONTENT -->
+  <header class="relative z-10 pt-16 pb-10">
+    <div class="container text-center">
+      <h1 class="text-4xl md:text-5xl font-extrabold mark">✈️ Aircraft Inspection AI</h1>
+      <p class="mt-3 text-gray-300/90 text-lg">Detect scratches, dents, and anomalies from images & video — fast, consistent, auditable.</p>
+
+      <!-- Role selection (hero) -->
+      <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+        <a href="{% url 'admin_login' %}" class="glass rounded-xl p-5 hover:scale-[1.01] transition reveal" id="card-admin">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-xl font-semibold">🔐 Admin</h3>
+              <p class="text-sm text-gray-300/80 mt-1">Manage users, thresholds, exports</p>
+            </div>
+            <button class="btn rounded-lg px-4 py-2 text-sm"><span>Login</span></button>
+          </div>
+        </a>
+        <a href="{% url 'inspector_login' %}" class="glass rounded-xl p-5 hover:scale-[1.01] transition reveal" id="card-inspector">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-xl font-semibold">🧑‍✈️ Inspector</h3>
+              <p class="text-sm text-gray-300/80 mt-1">Upload media & review detections</p>
+            </div>
+            <button class="btn rounded-lg px-4 py-2 text-sm"><span>Login</span></button>
+          </div>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Capabilities -->
+  <section class="relative z-10 py-10">
+    <div class="container">
+      <h2 class="text-2xl font-bold mb-6 mark">Core Capabilities</h2>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass rounded-xl p-5 reveal">
+          <h3 class="font-semibold mb-1">📸 Image & Video</h3>
+          <p class="text-sm text-gray-300/85">Upload images or full videos; auto frame sampling and per-frame detection.</p>
+        </div>
+        <div class="glass rounded-xl p-5 reveal">
+          <h3 class="font-semibold mb-1">🤖 YOLO-based Detection</h3>
+          <p class="text-sm text-gray-300/85">Trained weights, per-class thresholds, NMS tuning, confidence scoring.</p>
+        </div>
+        <div class="glass rounded-xl p-5 reveal">
+          <h3 class="font-semibold mb-1">🧭 Severity & Tagging</h3>
+          <p class="text-sm text-gray-300/85">Annotate, tag by zone/part, flag for follow-up, assign to work orders.</p>
+        </div>
+        <div class="glass rounded-xl p-5 reveal">
+          <h3 class="font-semibold mb-1">📤 Export & Reports</h3>
+          <p class="text-sm text-gray-300/85">Download annotated media, CSV/JSON summaries, or PDF inspection reports.</p>
+        </div>
+        <div class="glass rounded-xl p-5 reveal">
+          <h3 class="font-semibold mb-1">⚡ GPU Acceleration</h3>
+          <p class="text-sm text-gray-300/85">Auto-detect GPU; fall back to CPU; batched frames for throughput.</p>
+        </div>
+        <div class="glass rounded-xl p-5 reveal">
+          <h3 class="font-semibold mb-1">🛡 Access & Audit</h3>
+          <p class="text-sm text-gray-300/85">Role-based access, job logs, reproducible runs, data retention policies.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="relative z-10 py-10">
+    <div class="container">
+      <h2 class="text-2xl font-bold mb-6 mark">How It Works</h2>
+      <div class="grid sm:grid-cols-3 gap-4">
+        <div class="glass rounded-xl p-6 reveal">
+          <div class="text-3xl mb-2">1️⃣</div>
+          <h3 class="font-semibold mb-1">Upload</h3>
+          <p class="text-sm text-gray-300/85">Drag & drop images/videos or import from a folder.</p>
+        </div>
+        <div class="glass rounded-xl p-6 reveal">
+          <div class="text-3xl mb-2">2️⃣</div>
+          <h3 class="font-semibold mb-1">Detect</h3>
+          <p class="text-sm text-gray-300/85">YOLO runs per-frame; detections are consolidated and scored.</p>
+        </div>
+        <div class="glass rounded-xl p-6 reveal">
+          <div class="text-3xl mb-2">3️⃣</div>
+          <h3 class="font-semibold mb-1">Review & Export</h3>
+          <p class="text-sm text-gray-300/85">Filter by severity, approve, and export annotated results.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Preview -->
+  <section class="relative z-10 py-10">
+    <div class="container">
+      <h2 class="text-2xl font-bold mb-6 mark">Detection Preview</h2>
+      <div class="glass rounded-xl p-4 reveal">
+        <!-- Replace the img src below with an annotated example from your MEDIA/static -->
+       <img src="https://images.unsplash.com/photo-1529070538774-1843cb3265df?auto=format&fit=crop&w=1200&q=80"
+     alt="Annotated detection preview"
+     class="rounded-lg w-full object-cover max-h-[380px]"
+     onerror="this.style.display='none'">
+
+        <p class="text-xs text-gray-400/80 mt-2">Sample annotated output (boxes & labels). Replace with a real preview.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="relative z-10 py-12">
+    <div class="container text-center">
+      <h3 class="text-xl font-semibold mb-4">Ready to start an inspection?</h3>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <a href="{% url 'admin_login' %}" class="btn rounded-lg px-6 py-3"><span>🔐 Admin Login</span></a>
+        <a href="{% url 'inspector_login' %}" class="btn rounded-lg px-6 py-3"><span>🧑‍✈️ Inspector Login</span></a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="relative z-10 py-8 text-center text-xs text-gray-400/80">
+    v1.0 • YOLO-powered • For demo use • © {{ year|default:2025 }}
+  </footer>
+
+  <!-- Starfield -->
+  <script>
+    (function () {
+      const canvas = document.getElementById('stars');
+      const ctx = canvas.getContext('2d');
+      let w, h, particles;
+      function resize(){
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+        particles = Array.from({length: Math.min(220, Math.floor(w*h/12000))}, ()=>({
+          x: Math.random()*w, y: Math.random()*h, z: Math.random()*0.8+0.2,
+          vx:(Math.random()-0.5)*0.1, vy:(Math.random()-0.5)*0.1
+        }));
+      }
+      window.addEventListener('resize', resize); resize();
+      (function step(){
+        ctx.clearRect(0,0,w,h);
+        for(const p of particles){
+          p.x+=p.vx; p.y+=p.vy;
+          if(p.x<-50)p.x=w+50; else if(p.x>w+50)p.x=-50;
+          if(p.y<-50)p.y=h+50; else if(p.y>h+50)p.y=-50;
+          const s=p.z*1.6; ctx.globalAlpha=0.65*p.z; ctx.fillStyle='#cfe8ff';
+          ctx.fillRect(p.x,p.y,s,s);
+        }
+        ctx.globalAlpha=0.045; ctx.strokeStyle='#7c4dff'; ctx.beginPath();
+        for(let i=0;i<particles.length;i++){
+          for(let j=i+1;j<i+8 && j<particles.length;j++){
+            const a=particles[i], b=particles[j];
+            const dx=a.x-b.x, dy=a.y-b.y, d2=dx*dx+dy*dy;
+            if(d2<12000){ ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); }
+          }
+        }
+        ctx.stroke(); requestAnimationFrame(step);
+      })();
+    })();
+  </script>
+
+  <!-- GSAP animations -->
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      // float orbs
+      gsap.to(".orb--a",{y:25,x:10,duration:6,yoyo:true,repeat:-1,ease:"sine.inOut"});
+      gsap.to(".orb--b",{y:-20,x:-12,duration:7.5,yoyo:true,repeat:-1,ease:"sine.inOut"});
+      gsap.to(".orb--c",{y:30,x:-8,duration:8,yoyo:true,repeat:-1,ease:"sine.inOut"});
+
+      // reveal on scroll
+      gsap.utils.toArray(".reveal").forEach(el=>{
+        gsap.to(el,{
+          opacity:1, y:0, duration:0.7, ease:"power3.out",
+          scrollTrigger:{trigger:el, start:"top 85%"}
+        });
+      });
+
+      // card micro-interaction
+      ["#card-admin","#card-inspector"].forEach(sel=>{
+        const card=document.querySelector(sel);
+        if(!card) return;
+        let b=card.getBoundingClientRect();
+        function handle(e){
+          const x=(e.clientX-b.left)/b.width, y=(e.clientY-b.top)/b.height;
+          const rx=(y-0.5)*-6, ry=(x-0.5)*6;
+          gsap.to(card,{rotateX:rx, rotateY:ry, transformPerspective:900, transformOrigin:"center", duration:0.25, ease:"power2.out"});
+        }
+        function reset(){ gsap.to(card,{rotateX:0, rotateY:0, duration:0.4, ease:"power3.out"}) }
+        window.addEventListener('resize',()=> b=card.getBoundingClientRect());
+        card.addEventListener('mousemove',handle);
+        card.addEventListener('mouseleave',reset);
+      });
+    });
+  </script>
+</body>
+</html>

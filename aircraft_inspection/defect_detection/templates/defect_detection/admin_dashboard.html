@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard · Aircraft Inspection AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+
+  <style>
+    :root{
+      --bg1:#0b0f17; --bg2:#0e1624; --accent:#00d4ff; --accent-2:#7c4dff;
+      --glass:rgba(255,255,255,.06);
+    }
+    html,body{height:100%}
+    body{
+      background:
+        radial-gradient(1200px 800px at 80% -20%, #182338 0%, transparent 45%),
+        radial-gradient(1200px 800px at 0% 120%, #120d26 0%, transparent 45%),
+        linear-gradient(120deg, var(--bg1), var(--bg2));
+      color:#e8edf6; overflow-x:hidden;
+      font-family: ui-sans-serif, system-ui, Inter, "Segoe UI", Roboto;
+    }
+
+    /* background helpers */
+    .bg-layer{position:absolute; inset:0; z-index:0; pointer-events:none}
+    .grid-bg{
+      background:
+        linear-gradient(transparent 24px, rgba(255,255,255,.05) 25px) 0 0 / 30px 30px,
+        linear-gradient(90deg, transparent 24px, rgba(255,255,255,.05) 25px) 0 0 / 30px 30px;
+      -webkit-mask-image: radial-gradient(1200px 750px at 50% 40%, #000 45%, transparent 80%);
+              mask-image: radial-gradient(1200px 750px at 50% 40%, #000 45%, transparent 80%);
+      animation:grid-move 40s linear infinite
+    }
+    @keyframes grid-move{from{transform:translateY(0)} to{transform:translateY(30px)}}
+    .noise{background:url('https://grainy-gradients.vercel.app/noise.svg'); opacity:.05; mix-blend-mode:soft-light}
+
+    /* layout */
+    .app{position:relative; z-index:1; display:grid; grid-template-columns: 260px 1fr; min-height:100vh}
+    @media (max-width: 1024px){ .app{ grid-template-columns: 72px 1fr } }
+    @media (max-width: 680px){ .app{ grid-template-columns: 0 1fr } }
+
+    /* sidebar */
+    .sidebar{
+      position:sticky; top:0; height:100vh; padding:16px;
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border-right:1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(12px);
+    }
+    .brand{
+      font-weight:800; letter-spacing:.4px;
+      background:linear-gradient(90deg,var(--accent),var(--accent-2));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      filter:drop-shadow(0 2px 14px rgba(0,212,255,.35));
+    }
+    .nav a{
+      display:flex; align-items:center; gap:10px;
+      padding:.65rem .8rem; border-radius:.75rem; color:#cfe0ff;
+      border:1px solid transparent;
+    }
+    .nav a:hover{ background:rgba(255,255,255,.05); border-color: rgba(255,255,255,.08) }
+
+    /* header */
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 20px; position:sticky; top:0; z-index:5;
+      background:linear-gradient(180deg, rgba(10,14,22,.85), rgba(10,14,22,.60));
+      border-bottom:1px solid rgba(255,255,255,.08); backdrop-filter: blur(10px);
+    }
+    .search input{
+      background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12);
+      color:#e8edf6; border-radius:.7rem; padding:.6rem .9rem; width:280px;
+    }
+    @media (max-width: 640px){ .search input{ width: 180px } }
+
+    /* glass cards */
+    .glass{
+      background:linear-gradient(180deg, var(--glass), rgba(255,255,255,.04));
+      border:1px solid rgba(255,255,255,.08);
+      backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+      border-radius: 1rem;
+    }
+
+    /* buttons */
+    .btn{
+      position:relative; overflow:hidden; color:white; white-space:nowrap;
+      border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(135deg, rgba(0,212,255,.20), rgba(124,77,255,.18));
+      transition:transform .15s ease, box-shadow .2s ease;
+      border-radius:.7rem; padding:.6rem .9rem;
+    }
+    .btn:hover{transform:translateY(-1px) scale(1.01); box-shadow:0 12px 35px rgba(124,77,255,.25)}
+    .btn::before{
+      content:""; position:absolute; inset:-120% -60%;
+      background:conic-gradient(from 0deg, transparent, rgba(0,212,255,.4), transparent 30%);
+      animation:sweep 3.5s linear infinite
+    }
+    @keyframes sweep{to{transform:rotate(360deg)}}
+    .btn > span{position:relative; z-index:1}
+
+    /* KPI cards */
+    .kpi{display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center}
+    .kpi .num{font-size:1.8rem; font-weight:800}
+    .kpi .sub{font-size:.8rem; opacity:.8}
+
+    /* table */
+    table{border-collapse:collapse; width:100%}
+    th,td{border:1px solid rgba(255,255,255,.12); padding:.7rem; text-align:center}
+    thead{background:rgba(0,212,255,.10); color:#aee6ff; font-weight:700}
+    tbody tr:nth-child(even){background:rgba(255,255,255,.03)}
+    tbody td{color:#cfd8e6}
+    .table-wrap{overflow:auto; border-radius: .75rem}
+
+    /* chart */
+    .chart svg{width:100%; height:220px}
+    .chart .axis text{fill:#bcd4ff; font-size:12px}
+    .chart .bar{fill:url(#gradBar)}
+    .chart .line{fill:none; stroke:url(#gradLine); stroke-width:2.5}
+
+    /* status dots */
+    .dot{width:10px; height:10px; border-radius:9999px; display:inline-block}
+
+    /* reveals */
+    .reveal{opacity:0; transform:translateY(18px)}
+  </style>
+</head>
+
+<body>
+  <!-- Background layers -->
+  <div class="bg-layer grid-bg"></div>
+  <div class="bg-layer noise"></div>
+
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="mb-6">
+        <div class="brand text-xl">Aircraft Inspection</div>
+        <div class="text-[11px] text-gray-400 mt-1">Admin Console</div>
+      </div>
+      <nav class="nav space-y-1">
+        <a href="{% url 'admin_dashboard' %}" class="bg-white/5 border-white/10">
+          <span>Dashboard</span>
+        </a>
+        <a href="{% url 'register_inspector' %}">
+          <span>Register Inspector</span>
+        </a>
+        <a href="{% url 'view_inspectors' %}">
+          <span>Inspectors</span>
+        </a>
+        <a href="{% url 'all_uploads' %}">
+          <span>Uploads</span>
+        </a>
+        <a href="{% url 'logout' %}">
+          <span>Logout</span>
+        </a>
+      </nav>
+
+      <div class="mt-8 glass p-3 text-xs">
+        <div class="flex items-center justify-between">
+          <span>GPU</span>
+          <span>
+            <span class="dot" style="background:#22c55e"></span>
+            Online
+          </span>
+        </div>
+        <div class="flex items-center justify-between mt-2">
+          <span>Queue</span>
+          <span id="queueCount">0</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <section class="relative">
+      <!-- TOPBAR -->
+      <div class="topbar">
+        <div class="search">
+          <form action="#" onsubmit="return false">
+            <input type="text" placeholder="Search inspectors, uploads, defects…" />
+          </form>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <div class="text-gray-300/80">Admin</div>
+          <a href="{% url 'logout' %}" class="btn"><span>Logout</span></a>
+        </div>
+      </div>
+
+      <!-- CONTENT -->
+      <div class="p-5 md:p-8 space-y-6">
+        <!-- Quick Actions -->
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 reveal">
+          <a href="{% url 'register_inspector' %}" class="glass p-4 kpi hover:scale-[1.01] transition">
+            <div class="num">+ Inspector</div><div class="sub">Register new</div>
+          </a>
+          <a href="{% url 'view_inspectors' %}" class="glass p-4 kpi hover:scale-[1.01] transition">
+            <div class="num">Inspectors</div><div class="sub">Manage & filter</div>
+          </a>
+          <a href="{% url 'all_uploads' %}" class="glass p-4 kpi hover:scale-[1.01] transition">
+            <div class="num">Uploads</div><div class="sub">Media history</div>
+          </a>
+          <a href="#" class="glass p-4 kpi hover:scale-[1.01] transition" onclick="alert('Coming soon: Reports center!')">
+            <div class="num">Reports</div><div class="sub">Generate & export</div>
+          </a>
+        </div>
+
+        <!-- KPIs -->
+        <div class="grid md:grid-cols-4 gap-4">
+          <div class="glass p-4 reveal">
+            <div class="text-xs text-gray-400">Inspections (7d)</div>
+            <div class="text-3xl font-extrabold mt-1" id="kpiInspections">128</div>
+            <div class="text-xs text-emerald-400 mt-1">+12% vs last week</div>
+          </div>
+          <div class="glass p-4 reveal">
+            <div class="text-xs text-gray-400">Detections</div>
+            <div class="text-3xl font-extrabold mt-1" id="kpiDetections">356</div>
+            <div class="text-xs text-emerald-400 mt-1">+6%</div>
+          </div>
+          <div class="glass p-4 reveal">
+            <div class="text-xs text-gray-400">Critical</div>
+            <div class="text-3xl font-extrabold mt-1" id="kpiCritical">14</div>
+            <div class="text-xs text-rose-400 mt-1">Action required</div>
+          </div>
+          <div class="glass p-4 reveal">
+            <div class="text-xs text-gray-400">Active Inspectors</div>
+            <div class="text-3xl font-extrabold mt-1" id="kpiActive">9</div>
+            <div class="text-xs text-gray-300 mt-1">logged in today</div>
+          </div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="grid lg:grid-cols-3 gap-4">
+          <!-- Bar chart: defects per category -->
+          <div class="glass p-4 chart reveal">
+            <div class="text-sm mb-2">Defects by Category</div>
+            <svg viewBox="0 0 420 220">
+              <defs>
+                <linearGradient id="gradBar" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#00d4ff"/>
+                  <stop offset="100%" stop-color="#7c4dff"/>
+                </linearGradient>
+              </defs>
+              <!-- axes -->
+              <g class="axis">
+                <text x="50" y="210">Scratch</text>
+                <text x="140" y="210">Dent</text>
+                <text x="230" y="210">Crack</text>
+                <text x="320" y="210">Corrosion</text>
+              </g>
+              <!-- bars (animated heights via JS) -->
+              <rect class="bar" x="45" width="50" y="200" height="0" rx="6"></rect>
+              <rect class="bar" x="135" width="50" y="200" height="0" rx="6"></rect>
+              <rect class="bar" x="225" width="50" y="200" height="0" rx="6"></rect>
+              <rect class="bar" x="315" width="50" y="200" height="0" rx="6"></rect>
+            </svg>
+          </div>
+
+          <!-- Line chart: inspections by day -->
+          <div class="glass p-4 chart reveal lg:col-span-2">
+            <div class="text-sm mb-2">Inspections (Last 14 days)</div>
+            <svg viewBox="0 0 640 220">
+              <defs>
+                <linearGradient id="gradLine" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#00d4ff"/>
+                  <stop offset="100%" stop-color="#7c4dff"/>
+                </linearGradient>
+              </defs>
+              <g class="axis">
+                <text x="10" y="210">Day 1</text>
+                <text x="120" y="210">3</text>
+                <text x="230" y="210">6</text>
+                <text x="340" y="210">9</text>
+                <text x="450" y="210">12</text>
+                <text x="560" y="210">14</text>
+              </g>
+              <!-- path animated in JS -->
+              <path class="line" d="" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- TWO COLUMNS: Inspectors table + Recent activity -->
+       
+
+
+        <!-- SETTINGS / SYSTEM -->
+
+
+          </div>
+        </div>
+
+        <div class="pb-8"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ===== GSAP reveal animations =====
+    window.addEventListener('DOMContentLoaded', () => {
+      gsap.registerPlugin(ScrollTrigger);
+      gsap.utils.toArray('.reveal').forEach(el=>{
+        gsap.to(el, {opacity:1, y:0, duration:.7, ease:'power3.out',
+          scrollTrigger:{trigger:el, start:'top 85%'}});
+      });
+
+      // KPI "pop" in
+      gsap.from('.kpi .num', {scale:0.9, opacity:0, duration:.4, stagger:.08, ease:'back.out(1.8)'});
+    });
+
+    // ===== Dummy metrics + chart animations (replace with live later) =====
+    (function(){
+      // Bar chart heights (Scratch, Dent, Crack, Corrosion)
+      const values = [96, 120, 80, 58]; // px heights
+      const bars = document.querySelectorAll('.chart rect.bar');
+      bars.forEach((b, i)=>{
+        const target = 200 - values[i];
+        gsap.to(b, {attr:{y: target, height: values[i]}, duration: .8, delay: .15 * i, ease:'power2.out'});
+      });
+
+      // Line chart path (14 days)
+      const path = document.querySelector('.chart .line');
+      if(path){
+        const points = [30,50,40,70,65,90,80,110,95,120,130,125,140,150]; // y-ish values
+        const stepX = 620/(points.length-1);
+        let d = "";
+        points.forEach((y,i)=> d += (i===0? "M":" L") + (10+i*stepX) + " " + (200 - y));
+        path.setAttribute('d', d);
+        const len = path.getTotalLength();
+        path.style.strokeDasharray = len;
+        path.style.strokeDashoffset = len;
+        gsap.to(path, {strokeDashoffset: 0, duration: 1.5, ease:'power2.out', delay:.4});
+      }
+
+      // Row count & simple search
+      const table = document.getElementById('inspectorsTable');
+      const rc = document.getElementById('rowCount');
+      const search = document.getElementById('inspectorSearch');
+      function updateCount(){
+        if(!table) return;
+        const visible = [...table.tBodies[0].rows].filter(r=> r.style.display !== 'none').length;
+        rc && (rc.textContent = visible);
+      }
+      function doFilter(){
+        const q = (search.value || '').toLowerCase();
+        [...table.tBodies[0].rows].forEach(r=>{
+          const name = (r.cells[0].innerText || '').toLowerCase();
+          r.style.display = name.includes(q) ? '' : 'none';
+        });
+        updateCount();
+      }
+      if(table){ updateCount(); }
+      search && search.addEventListener('input', doFilter);
+
+      // fake queue / uptime counters (demo)
+      let q = 0, secs = 0;
+      setInterval(()=> {
+        q = Math.max(0, q + (Math.random() > .6 ? 1 : -1));
+        secs += 5;
+        const mm = String(Math.floor(secs/60)).padStart(2,'0');
+        const ss = String(secs%60).padStart(2,'0');
+        document.getElementById('queueCount').textContent = q;
+        document.getElementById('queueCount2').textContent = q;
+        document.getElementById('uptime').textContent = `00:${mm}:${ss}`;
+      }, 5000);
+    })();
+  </script>
+</body>
+</html>

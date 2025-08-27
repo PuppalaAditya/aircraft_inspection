@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>All Uploads · Admin View</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <style>
+    :root{
+      --bg1:#0b0f17; --bg2:#0e1624; --accent:#00d4ff; --accent-2:#7c4dff; --glass:rgba(255,255,255,.06);
+    }
+    html,body{height:100%}
+    body{
+      background:
+        radial-gradient(1200px 800px at 80% -20%, #182338 0%, transparent 45%),
+        radial-gradient(1200px 800px at 0% 120%, #120d26 0%, transparent 45%),
+        linear-gradient(120deg, var(--bg1), var(--bg2));
+      color:#e8edf6; overflow-x:auto;
+      font-family: ui-sans-serif, system-ui, Inter, "Segoe UI", Roboto;
+    }
+
+    /* background layers */
+    .bg-layer{position:absolute; inset:0; z-index:0; pointer-events:none}
+    .grid-bg{
+      background:
+        linear-gradient(transparent 24px, rgba(255,255,255,.05) 25px) 0 0 / 30px 30px,
+        linear-gradient(90deg, transparent 24px, rgba(255,255,255,.05) 25px) 0 0 / 30px 30px;
+      -webkit-mask-image: radial-gradient(1200px 750px at 50% 40%, #000 45%, transparent 80%);
+              mask-image: radial-gradient(1200px 750px at 50% 40%, #000 45%, transparent 80%);
+      animation:grid-move 40s linear infinite
+    }
+    @keyframes grid-move{from{transform:translateY(0)} to{transform:translateY(30px)}}
+    .noise{background:url('https://grainy-gradients.vercel.app/noise.svg'); opacity:.05; mix-blend-mode:soft-light}
+
+    /* glass */
+    .glass{
+      background:linear-gradient(180deg, var(--glass), rgba(255,255,255,.04));
+      border:1px solid rgba(255,255,255,.08);
+      backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+      border-radius: 1rem;
+    }
+
+    /* gradient title */
+    .mark{
+      background:linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      filter:drop-shadow(0 2px 16px rgba(0,212,255,.35));
+    }
+
+    /* table */
+    table{border-collapse:collapse; width:100%}
+    thead th{
+      position: sticky; top:0; z-index:1;
+      background: rgba(0,0,0,.25);
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      text-transform: uppercase; letter-spacing:.05em;
+      font-size:.72rem; color:#aee6ff; text-align:left; padding:.75rem 1rem;
+    }
+    tbody td{border-bottom:1px solid rgba(255,255,255,.08); padding:1rem; vertical-align:top; color:#d9e6ff}
+    tbody tr:nth-child(even){background: rgba(255,255,255,.02)}
+    tbody tr:hover{background: rgba(124,77,255,.08)}
+    .cell-center{text-align:center}
+
+    /* image */
+    .thumb{
+      height: 9.5rem; width: auto; max-width: 16rem; object-fit: contain;
+      border:1px solid rgba(255,255,255,.12); border-radius:.5rem; display:block; margin-inline:auto;
+      background: rgba(255,255,255,.02);
+    }
+
+    /* lists */
+    .mini-list{list-style:disc; list-style-position: inside; margin:0; padding:0; color:#cfe0ff; font-size:.9rem}
+    .mini-list li + li{margin-top:.25rem}
+
+    /* buttons */
+    .btn{
+      position:relative; overflow:hidden; color:white; display:inline-flex; align-items:center; justify-content:center;
+      border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(135deg, rgba(0,212,255,.20), rgba(124,77,255,.18));
+      transition:transform .15s ease, box-shadow .2s ease;
+      border-radius:.7rem; padding:.55rem .9rem;
+    }
+    .btn:hover{transform:translateY(-1px) scale(1.01); box-shadow:0 12px 35px rgba(124,77,255,.25)}
+    .btn::before{
+      content:""; position:absolute; inset:-120% -60%;
+      background:conic-gradient(from 0deg, transparent, rgba(0,212,255,.4), transparent 30%);
+      animation:sweep 3.5s linear infinite
+    }
+    @keyframes sweep{to{transform:rotate(360deg)}}
+    .btn > span{position:relative; z-index:1}
+
+    /* reveal */
+    .reveal{opacity:0; transform:translateY(18px)}
+  </style>
+</head>
+
+<body>
+  <!-- Background layers -->
+  <div class="bg-layer grid-bg"></div>
+  <div class="bg-layer noise"></div>
+
+  <main class="relative z-10 px-4 sm:px-6 lg:px-10 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-3xl font-extrabold mark">All Uploads (Admin View)</h2>
+      <a href="{% url 'admin_dashboard' %}" class="btn text-sm"><span>← Back to Dashboard</span></a>
+    </div>
+
+    <div id="card" class="glass p-4 sm:p-6">
+      <div class="overflow-x-auto rounded-xl">
+        <table>
+          <thead>
+            <tr>
+              <th>Inspector</th>
+              <th class="cell-center">Image</th>
+              <th>Predictions</th>
+              <th>Prediction Summary</th>
+              <th>Date</th>
+              <th class="cell-center">PDF</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in records %}
+            <tr class="reveal">
+              <!-- Inspector -->
+              <td class="whitespace-nowrap text-cyan-200 font-medium">
+                {{ record.inspector.username }}
+              </td>
+
+              <!-- Image -->
+              <td class="cell-center">
+                <img src="{{ record.result_image_path }}" alt="Detected" class="thumb" />
+              </td>
+
+              <!-- Predictions -->
+              <td>
+                <ul class="mini-list">
+                  {% for item in record.predictions_list %}
+                    <li>{{ item }}</li>
+                  {% endfor %}
+                </ul>
+              </td>
+
+              <!-- Summary -->
+              <td>
+                <ul class="mini-list">
+                  {% for item in record.prediction_summary_list %}
+                    <li>{{ item }}</li>
+                  {% endfor %}
+                </ul>
+              </td>
+
+              <!-- Date -->
+              <td class="whitespace-nowrap text-gray-300 text-sm">
+                {{ record.upload_datetime|date:"Y-m-d H:i" }}
+              </td>
+
+              <!-- PDF -->
+              <td class="cell-center">
+                <a href="{{ record.pdf_path }}" class="btn text-sm w-full sm:w-auto">
+                  <span>Download</span>
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center text-gray-400 py-8">No uploads found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bottom actions -->
+      <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-end">
+        <a href="{% url 'all_uploads' %}" class="btn text-sm w-full sm:w-auto"><span>Refresh</span></a>
+        <a href="{% url 'admin_dashboard' %}" class="btn text-sm w-full sm:w-auto"><span>Back</span></a>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Card entrance + row reveals
+    window.addEventListener('DOMContentLoaded', () => {
+      gsap.from("#card", {duration:0.9, y:22, opacity:0, ease:"power3.out"});
+      gsap.utils.toArray("tbody .reveal").forEach((row, i)=>{
+        gsap.to(row, {opacity:1, y:0, duration:.5, delay:.05 * i, ease:"power2.out"});
+      });
+    });
+  </script>
+</body>
+</html>

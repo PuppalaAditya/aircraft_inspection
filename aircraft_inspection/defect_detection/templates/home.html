@@ -1,0 +1,328 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Aircraft Defect Detection — Inspector</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root{
+      --bg1:#0b0f17; --bg2:#0e1624;
+      --glass:rgba(255,255,255,.06);
+      --line:rgba(255,255,255,.10);
+      --ink:#e8edf6; --muted:#a6b0c1;
+      --accent:#00d4ff; --accent2:#7c4dff; --good:#22c55e; --bad:#ef4444;
+    }
+    body{
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background:
+        radial-gradient(1200px 800px at 80% -20%, #182338 0%, transparent 45%),
+        radial-gradient(1200px 800px at 0% 120%, #120d26 0%, transparent 45%),
+        linear-gradient(120deg, var(--bg1), var(--bg2));
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    /* Ambient grid */
+    .grid-bg{ position: fixed; inset: 0; pointer-events:none; opacity:.45;
+      background:
+        linear-gradient(transparent 23px, rgba(255,255,255,.06) 24px) 0 0/30px 30px,
+        linear-gradient(90deg, transparent 23px, rgba(255,255,255,.06) 24px) 0 0/30px 30px;
+      mask-image: radial-gradient(1200px 800px at 50% 40%, black 50%, transparent 85%);
+      animation: gridMove 40s linear infinite;
+    }
+    @keyframes gridMove{ to{ transform: translateY(30px)} }
+
+    /* Glass helpers */
+    .glass{
+      background: linear-gradient(180deg, var(--glass), rgba(255,255,255,.04));
+      border: 1px solid var(--line);
+      backdrop-filter: blur(14px) saturate(1.1);
+      box-shadow: 0 18px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .btn{
+      border:1px solid var(--line);
+      background: linear-gradient(135deg, rgba(0,212,255,.22), rgba(124,77,255,.20));
+      color:#fff; font-weight:700; transition: transform .12s, box-shadow .2s, opacity .2s;
+    }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 16px 32px rgba(124,77,255,.25) }
+    .btn:active{ transform: translateY(0); opacity:.95 }
+
+    .title-grad{
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      filter: drop-shadow(0 2px 16px rgba(0,212,255,.25));
+    }
+    .chip{ color:var(--muted); font-size:.85rem }
+
+    /* Sidebar */
+    .side-link{ display:flex; align-items:center; gap:.6rem; padding:.6rem .8rem; border-radius:.7rem; color:#dbe7ff }
+    .side-link:hover{ background: rgba(255,255,255,.05) }
+    .active{ background: rgba(0,212,255,.12); border:1px solid var(--line) }
+
+    /* Dropzone */
+    .dropzone{
+      border:2px dashed var(--line); background: rgba(255,255,255,.03);
+      transition: background .2s, border-color .2s, box-shadow .2s, transform .2s;
+      cursor:pointer;
+    }
+    .dropzone:hover{ background: rgba(0,212,255,.06); border-color: rgba(0,212,255,.6); box-shadow: 0 12px 30px rgba(0,212,255,.12); transform: translateY(-1px) }
+    .dropzone.dragover{ background: rgba(124,77,255,.08); border-color: rgba(124,77,255,.7) }
+
+    /* Spinner ring */
+    .ring{ width:42px; height:42px; border-radius:9999px; border:4px solid rgba(255,255,255,.15); border-top-color: var(--accent); animation: spin .9s linear infinite }
+    @keyframes spin{ to{ transform:rotate(360deg) } }
+
+    /* Cards */
+    .stat{ border:1px solid var(--line); border-radius:14px; padding:1rem; background: rgba(255,255,255,.03) }
+
+    .fade-in{ animation: fade .6s ease both }
+    @keyframes fade{ from{ opacity:0; transform: translateY(8px)} to{ opacity:1; transform:none } }
+
+    /* Table chips */
+    .pill{ display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .5rem; border-radius:999px; border:1px solid var(--line); font-weight:700 }
+    .good{ color:#c7f9df; background: rgba(34,197,94,.15) }
+    .warn{ color:#fde68a; background: rgba(251,191,36,.12) }
+    .bad{ color:#fecaca; background: rgba(239,68,68,.12) }
+  </style>
+</head>
+
+<body class="px-4 md:px-6 py-6">
+  <div class="grid-bg"></div>
+
+  <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[260px,1fr] gap-6">
+    <!-- SIDEBAR / INSPECTOR PANEL -->
+    <aside class="glass rounded-2xl p-5 h-fit sticky top-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center font-extrabold">IN</div>
+        <div>
+          <div class="font-bold">Inspector Console</div>
+          <div class="chip">v1.0</div>
+        </div>
+      </div>
+
+      <nav class="space-y-1 mb-5">
+        <a href="#upload" class="side-link active">📤 Upload</a>
+        <a href="{% url 'inspector_uploads' %}" class="side-link">📁 My Uploads</a>
+        <a href="#help" class="side-link">❓ Help & Tips</a>
+      </nav>
+
+      <div class="stat mb-4">
+        <div class="text-sm text-white/80 font-semibold mb-1">Quick Stats</div>
+        <ul class="text-sm space-y-1">
+          <li>Total uploads: <span class="font-bold">{{ total_uploads|default:'0' }}</span></li>
+          <li>Avg. time: <span class="font-bold">{{ avg_processing|default:'—' }}</span></li>
+          <li>Model: <span class="font-bold">{{ model_version|default:'YOLO' }}</span></li>
+        </ul>
+      </div>
+
+      <div class="stat">
+        <div class="text-sm text-white/80 font-semibold mb-1">Recent Activity</div>
+        <ul class="text-sm space-y-1 max-h-44 overflow-auto pr-1">
+          {% if recent_records %}
+            {% for r in recent_records %}
+              <li class="truncate">🗂 {{ r.aircraft_id|default:'—' }} · {{ r.upload_datetime|date:"m-d H:i" }}</li>
+            {% endfor %}
+          {% else %}
+            <li class="text-white/60">No recent items.</li>
+          {% endif %}
+        </ul>
+      </div>
+
+      <div class="mt-5">
+        <a href="{% url 'inspector_logout' %}" class="btn w-full rounded-xl py-2 text-center">Logout</a>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="glass rounded-2xl p-6 md:p-8 fade-in">
+      <!-- HEADER -->
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
+        <h2 class="text-2xl md:text-3xl font-extrabold title-grad">Upload Aircraft Image for Inspection</h2>
+        <div class="flex items-center gap-3">
+          <a href="{% url 'inspector_uploads' %}" class="btn rounded-xl px-4 py-2 text-sm">View My Uploads</a>
+          <a href="{% url 'inspector_logout' %}" class="btn rounded-xl px-4 py-2 text-sm" style="background:linear-gradient(135deg, rgba(239,68,68,.8), rgba(124,77,255,.25))">Logout</a>
+        </div>
+      </div>
+      <p class="chip mb-5">Upload a clear aircraft surface image (scratches/dents/cracks visible if any) and run detection.</p>
+
+      <!-- QUICK TIPS / STATUS -->
+      <div class="grid sm:grid-cols-3 gap-3 mb-6">
+        <div class="stat">
+          <div class="text-xs uppercase tracking-wider text-white/60 mb-1">Session</div>
+          <div class="text-sm">Signed in</div>
+          <div class="pill good mt-2">Healthy</div>
+        </div>
+        <div class="stat">
+          <div class="text-xs uppercase tracking-wider text-white/60 mb-1">Recommended</div>
+          <div class="text-sm">≥ 1024×1024, JPG/PNG</div>
+          <div class="pill warn mt-2">Avoid glare</div>
+        </div>
+        <div class="stat">
+          <div class="text-xs uppercase tracking-wider text-white/60 mb-1">Model</div>
+          <div class="text-sm">{{ model_version|default:"YOLO" }}</div>
+          <div class="pill mt-2">Auto-threshold</div>
+        </div>
+      </div>
+
+      <!-- UPLOAD SECTION -->
+      <section id="upload" class="grid lg:grid-cols-2 gap-6">
+        <div class="">
+          <form method="POST" enctype="multipart/form-data" class="space-y-4" id="uploadForm">
+            {% csrf_token %}
+            <label class="block dropzone rounded-xl p-6 text-center" id="dropZone">
+              <input type="file" name="upload" required class="sr-only" id="fileInput">
+              <div class="flex flex-col items-center gap-2 pointer-events-none">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" class="opacity-90">
+                  <path d="M12 16V4m0 0 4 4m-4-4-4 4" stroke="url(#g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M20 16.5v1a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 17.5v-1" stroke="url(#g)" stroke-width="2" stroke-linecap="round"/>
+                  <defs><linearGradient id="g" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#00d4ff"/><stop offset="1" stop-color="#7c4dff"/></linearGradient></defs>
+                </svg>
+                <div class="text-sm text-white/90 font-semibold">Click or drag & drop an image</div>
+                <div class="text-xs chip" id="fileHint">Accepted: JPG, PNG</div>
+              </div>
+            </label>
+
+            <button type="submit" class="btn w-full rounded-xl py-2.5 text-base">🔍 Analyze</button>
+          </form>
+
+          <!-- Spinner -->
+          <div id="spinner" class="hidden flex items-center justify-center gap-3 mt-4">
+            <div class="ring"></div>
+            <p class="text-cyan-300 font-semibold">Analyzing… please wait</p>
+          </div>
+
+          <!-- Optional small preview -->
+          <div id="previewWrap" class="hidden mt-4 stat">
+            <div class="text-sm text-white/80 mb-2 font-semibold">Selected File</div>
+            <img id="previewImg" src="" alt="" class="rounded-lg max-h-64 object-contain w-full"/>
+          </div>
+
+          <!-- Tips -->
+          <div id="help" class="mt-6 stat">
+            <div class="text-sm text-white/80 font-semibold mb-1">Tips</div>
+            <ul class="list-disc list-inside chip space-y-1">
+              <li>Use good lighting; avoid glare/reflections.</li>
+              <li>Frame the damaged area clearly; keep camera steady.</li>
+              <li>Higher resolution improves detection confidence.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- RESULT SECTION (unchanged logic) -->
+        <div>
+          {% if result_img %}
+          <div class="space-y-6">
+            <div>
+              <h3 class="text-xl font-bold mb-2">Analysis Result</h3>
+              <p class="chip mb-3">Detected defects are highlighted with bounding boxes.</p>
+              <div class="stat">
+                <img src="{{ result_img }}" alt="Result Image" class="rounded-lg w-full object-contain max-h-[460px]" />
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-lg font-bold mb-2">Detected Defects</h3>
+              <div class="grid sm:grid-cols-2 gap-2">
+                {% for label in labels %}
+                <div class="glass rounded-lg px-3 py-2 text-cyan-200 font-semibold border border-white/10">{{ label }}</div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-lg font-bold mb-2">Defect Summary</h3>
+              <div class="grid sm:grid-cols-2 gap-2">
+                {% for key, count in defect_counts.items %}
+                <div class="glass rounded-lg px-3 py-2 font-semibold">
+                  <span class="text-white/80">{{ key }}:</span> <span class="text-cyan-300">{{ count }}</span>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-lg font-bold mb-2">Risk Assessment</h3>
+              <div class="glass rounded-lg px-4 py-3 font-semibold border border-white/10">
+                {% if is_dangerous %}
+                  <p class="text-red-400">Critical maintenance required — severe defects detected.</p>
+                {% else %}
+                  <p class="text-emerald-300">No critical risks detected.</p>
+                {% endif %}
+              </div>
+            </div>
+
+            {% if pdf_path %}
+            <div class="text-center">
+              <a href="{{ pdf_path }}" class="btn inline-flex items-center rounded-xl px-5 py-2.5 mt-1">📄 Download Inspection Report (PDF)</a>
+            </div>
+            {% endif %}
+          </div>
+          {% else %}
+          <!-- Empty state -->
+          <div class="h-full flex items-center justify-center text-center">
+            <div class="max-w-md">
+              <h3 class="text-xl font-bold mb-1">No analysis yet</h3>
+              <p class="chip">Select an image on the left and click Analyze.</p>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // UI helpers only — backend contract unchanged
+    const form = document.getElementById('uploadForm');
+    const spinner = document.getElementById('spinner');
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileHint = document.getElementById('fileHint');
+    const previewWrap = document.getElementById('previewWrap');
+    const previewImg = document.getElementById('previewImg');
+
+    form.addEventListener('submit', () => spinner.classList.remove('hidden'));
+
+    // drag styling
+    ['dragenter','dragover'].forEach(evt =>
+      dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.add('dragover'); })
+    );
+    ['dragleave','drop'].forEach(evt =>
+      dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.remove('dragover'); })
+    );
+
+    // click to open dialog
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    // preview chosen file
+    fileInput.addEventListener('change', () => {
+      const f = fileInput.files && fileInput.files[0];
+      if (!f) return;
+      fileHint.textContent = f.name;
+      if (f.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          previewImg.src = e.target.result;
+          previewWrap.classList.remove('hidden');
+        };
+        reader.readAsDataURL(f);
+      } else {
+        previewWrap.classList.add('hidden');
+      }
+    });
+
+    // drop to assign
+    dropZone.addEventListener('drop', (e) => {
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!f) return;
+      fileInput.files = e.dataTransfer.files;
+      fileInput.dispatchEvent(new Event('change'));
+    });
+  </script>
+</body>
+</html>

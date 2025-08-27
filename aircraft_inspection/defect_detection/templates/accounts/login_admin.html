@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>🛡 Admin Login · OSGIS Paladin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+
+  <style>
+    :root{
+      --bg1:#0b0f17; --bg2:#0e1624; --accent:#00d4ff; --accent-2:#7c4dff;
+      --glass:rgba(255,255,255,.06);
+    }
+    html,body{height:100%}
+    body{
+      background:
+        radial-gradient(1200px 800px at 80% -20%, #182338 0%, transparent 45%),
+        radial-gradient(1200px 800px at 0% 120%, #120d26 0%, transparent 45%),
+        linear-gradient(120deg, var(--bg1), var(--bg2));
+      color:#e8edf6; overflow:hidden;
+    }
+
+    /* SAFETY: hide any accidental loader/spinner that could overlay the card */
+    .animate-spin,.animate-spin-slow,.loader,.spinner,[data-loader]{display:none!important}
+
+    /* Background layers (always behind) */
+    .bg-layer{position:absolute; inset:0; z-index:0; pointer-events:none}
+    #stars{z-index:0}
+    .orb{filter:blur(40px); opacity:.35; mix-blend-mode:screen}
+    .orb--a{position:absolute; width:40vmax; height:40vmax; left:-10vmax; top:-10vmax;
+            background:radial-gradient(circle at 30% 30%, #00d4ff66, transparent 60%)}
+    .orb--b{position:absolute; width:35vmax; height:35vmax; right:-8vmax; top:8vmax;
+            background:radial-gradient(circle at 70% 40%, #7c4dff55, transparent 60%)}
+    .orb--c{position:absolute; width:30vmax; height:30vmax; left:10vmax; bottom:-12vmax; opacity:.18;
+            background:radial-gradient(circle at 50% 50%, #00ffaacc, transparent 60%)}
+    .grid-bg{background:
+        linear-gradient(transparent 24px, rgba(255,255,255,.05) 25px) 0 0 / 30px 30px,
+        linear-gradient(90deg, transparent 24px, rgba(255,255,255,.05) 25px) 0 0 / 30px 30px;
+      -webkit-mask-image: radial-gradient(1000px 600px at 50% 40%, #000 40%, transparent 80%);
+              mask-image: radial-gradient(1000px 600px at 50% 40%, #000 40%, transparent 80%);
+      animation:grid-move 40s linear infinite}
+    @keyframes grid-move{from{transform:translateY(0)} to{transform:translateY(30px)}}
+    .noise{background:url('https://grainy-gradients.vercel.app/noise.svg'); opacity:.05; mix-blend-mode:soft-light}
+
+    /* Card (always in front) */
+    .card{
+      background:linear-gradient(180deg, var(--glass), rgba(255,255,255,.04));
+      border:1px solid rgba(255,255,255,.08);
+      backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+      z-index:10; /* <- critical */
+    }
+
+    .glow{
+      border:1px solid rgba(255,255,255,.12);
+      background-color:rgba(255,255,255,.04);
+      transition:box-shadow .3s, border-color .3s, transform .15s;
+      color:#e8edf6;
+    }
+    .glow::placeholder{color:rgba(232,237,246,.6)}
+    .glow:focus{
+      outline:none; border-color:rgba(0,212,255,.6);
+      box-shadow:0 0 0 4px rgba(0,212,255,.15), 0 0 32px rgba(0,212,255,.18);
+      transform:translateY(-1px);
+    }
+
+    .btn{
+      position:relative; overflow:hidden; color:white;
+      border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(135deg, rgba(0,212,255,.20), rgba(124,77,255,.18));
+      transition:transform .15s ease, box-shadow .2s ease;
+    }
+    .btn:hover{transform:translateY(-1px) scale(1.01); box-shadow:0 12px 35px rgba(124,77,255,.25)}
+    .btn::before{
+      content:""; position:absolute; inset:-120% -60%;
+      background:conic-gradient(from 0deg, transparent, rgba(0,212,255,.4), transparent 30%);
+      animation:sweep 3.5s linear infinite}
+    @keyframes sweep{to{transform:rotate(360deg)}}
+    .btn > span{position:relative; z-index:1}
+
+    .mark{
+      background:linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      filter:drop-shadow(0 2px 16px rgba(0,212,255,.35));
+    }
+    label{color:rgba(232,237,246,.75)}
+  </style>
+</head>
+
+<body class="min-h-screen relative">
+  <!-- Background stack -->
+  <canvas id="stars" class="bg-layer"></canvas>
+  <div class="bg-layer orb orb--a"></div>
+  <div class="bg-layer orb orb--b"></div>
+  <div class="bg-layer orb orb--c"></div>
+  <div class="bg-layer grid-bg"></div>
+  <div class="bg-layer noise"></div>
+
+  <!-- Content -->
+  <main class="relative min-h-screen flex items-center justify-center px-4" style="z-index:10;">
+    <div id="card" class="card rounded-2xl w-full max-w-sm p-8 md:p-10 will-change-transform">
+      <h1 class="text-2xl md:text-3xl font-extrabold text-center mb-2 leading-tight mark">
+        🛡 Admin Login
+      </h1>
+      <p class="text-center text-sm text-gray-300/80 mb-6">Administrator Console Access</p>
+
+      {% for msg in messages %}
+        <p class="mb-3 text-center text-sm font-semibold text-red-400 bg-red-500/10 border border-red-400/30 rounded-lg py-2 px-3">
+          {{ msg }}
+        </p>
+      {% endfor %}
+
+      <form method="post" id="loginForm" class="space-y-4">
+        {% csrf_token %}
+        <div>
+          <label class="block text-xs uppercase tracking-widest mb-1">Username</label>
+          <input type="text" name="username" autocomplete="username"
+                 class="glow w-full rounded-lg px-4 py-3"
+                 placeholder="Enter your username" required />
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-widest mb-1">Password</label>
+          <input type="password" name="password" autocomplete="current-password"
+                 class="glow w-full rounded-lg px-4 py-3"
+                 placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="btn w-full rounded-lg py-3.5 font-semibold tracking-wide">
+          <span>Login</span>
+        </button>
+      </form>
+
+      <div class="mt-6 text-center">
+        <a href="{% url 'role_select' %}" class="relative inline-block text-sm text-gray-200/90">
+          ← Back to Role Selection
+          <span class="absolute left-0 -bottom-0.5 h-[2px] w-full origin-left scale-x-40 bg-gradient-to-r from-[#00d4ff] to-[#7c4dff] transition-transform duration-200 ease-out group-hover:scale-x-100"></span>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Starfield particles
+    (function () {
+      const canvas = document.getElementById('stars');
+      const ctx = canvas.getContext('2d');
+      let w, h, particles=[];
+      function resize(){
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+        particles = Array.from({length: Math.min(220, Math.floor(w*h/12000))}, ()=>({
+          x: Math.random()*w, y: Math.random()*h, z: Math.random()*0.8+0.2,
+          vx: (Math.random()-0.5)*0.1, vy: (Math.random()-0.5)*0.1
+        }));
+      }
+      window.addEventListener('resize', resize); resize();
+      (function step(){
+        ctx.clearRect(0,0,w,h);
+        for(const p of particles){
+          p.x+=p.vx; p.y+=p.vy;
+          if(p.x<-50)p.x=w+50; else if(p.x>w+50)p.x=-50;
+          if(p.y<-50)p.y=h+50; else if(p.y>h+50)p.y=-50;
+          const s=p.z*1.6; ctx.globalAlpha=0.65*p.z; ctx.fillStyle='#cfe8ff';
+          ctx.fillRect(p.x,p.y,s,s);
+        }
+        ctx.globalAlpha=0.045; ctx.strokeStyle='#7c4dff'; ctx.beginPath();
+        for(let i=0;i<particles.length;i++){
+          for(let j=i+1;j<i+8 && j<particles.length;j++){
+            const a=particles[i], b=particles[j];
+            const dx=a.x-b.x, dy=a.y-b.y, d2=dx*dx+dy*dy;
+            if(d2<12000){ ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); }
+          }
+        }
+        ctx.stroke(); requestAnimationFrame(step);
+      })();
+    })();
+
+    // GSAP animations & interactions
+    window.addEventListener('DOMContentLoaded', () => {
+      const card = document.getElementById('card');
+      // entrance
+      gsap.from(card, { duration: 0.9, y: 22, opacity: 0, ease: "power3.out" });
+      // orbs float
+      gsap.to(".orb--a", { y: 25, x: 10, duration: 6, yoyo: true, repeat: -1, ease: "sine.inOut" });
+      gsap.to(".orb--b", { y: -20, x: -12, duration: 7.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+      gsap.to(".orb--c", { y: 30, x: -8, duration: 8, yoyo: true, repeat: -1, ease: "sine.inOut" });
+
+      // tilt interaction
+      let bounds = card.getBoundingClientRect();
+      function handle(e){
+        const x=(e.clientX-bounds.left)/bounds.width;
+        const y=(e.clientY-bounds.top)/bounds.height;
+        const rx=(y-0.5)*-10, ry=(x-0.5)*10;
+        gsap.to(card,{rotateX:rx, rotateY:ry, transformPerspective:900, transformOrigin:"center", duration:0.3, ease:"power2.out"});
+      }
+      function reset(){ gsap.to(card,{rotateX:0, rotateY:0, duration:0.5, ease:"power3.out"}); }
+      window.addEventListener('resize', ()=> (bounds = card.getBoundingClientRect()));
+      card.addEventListener('mousemove', handle);
+      card.addEventListener('mouseleave', reset);
+
+      // button micro-interaction + submit feedback
+      const btn = document.querySelector('button[type="submit"]');
+      const form = document.getElementById('loginForm');
+      btn.addEventListener('mousedown', ()=> gsap.to(btn,{scale:0.98, duration:0.08}));
+      btn.addEventListener('mouseup',   ()=> gsap.to(btn,{scale:1.00, duration:0.12}));
+      form.addEventListener('submit', ()=>{
+        gsap.to(btn,{opacity:0.75, duration:0.15});
+        btn.disabled=true;
+        btn.innerHTML='<span>⏳ Authenticating…</span>';
+      });
+    });
+  </script>
+</body>
+</html>

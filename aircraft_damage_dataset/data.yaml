@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 5
+names: ['Crack', 'Dent', 'Missing-head', 'Paint-off', 'Scratch']
+
+roboflow:
+  workspace: dataset1-yxabc
+  project: segment-3x3-image-dataset
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/dataset1-yxabc/segment-3x3-image-dataset/dataset/1

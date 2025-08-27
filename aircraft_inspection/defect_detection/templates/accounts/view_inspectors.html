@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>Registered Inspectors · Admin Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <style>
+    :root{
+      --bg1:#0b0f17; --bg2:#0e1624; --accent:#00d4ff; --accent-2:#7c4dff;
+      --glass:rgba(255,255,255,.06);
+    }
+    body{
+      background:
+        radial-gradient(1200px 800px at 80% -20%, #182338 0%, transparent 45%),
+        radial-gradient(1200px 800px at 0% 120%, #120d26 0%, transparent 45%),
+        linear-gradient(120deg, var(--bg1), var(--bg2));
+      color:#e8edf6;
+      overflow-x:hidden;
+      font-family: ui-sans-serif, system-ui, Inter, "Segoe UI", Roboto;
+    }
+
+    /* glass card */
+    .glass{
+      background:linear-gradient(180deg, var(--glass), rgba(255,255,255,.04));
+      border:1px solid rgba(255,255,255,.08);
+      backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+    }
+
+    /* gradient title */
+    .mark{
+      background:linear-gradient(90deg,var(--accent),var(--accent-2));
+      -webkit-background-clip:text; background-clip:text;
+      color:transparent;
+      filter:drop-shadow(0 2px 16px rgba(0,212,255,.35));
+    }
+
+    /* table styling */
+    table{border-collapse:collapse; width:100%}
+    th,td{border:1px solid rgba(255,255,255,.15); padding:.75rem; text-align:center}
+    thead{background:rgba(0,212,255,.1); color:#00d4ff; font-weight:600}
+    tbody tr:nth-child(even){background:rgba(255,255,255,.03)}
+    tbody td{color:#cfd8e6}
+
+    /* button */
+    .btn{
+      position:relative; overflow:hidden; color:white;
+      border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(135deg, rgba(0,212,255,.20), rgba(124,77,255,.18));
+      transition:transform .15s ease, box-shadow .2s ease;
+    }
+    .btn:hover{transform:translateY(-1px) scale(1.01); box-shadow:0 12px 35px rgba(124,77,255,.25)}
+    .btn::before{
+      content:""; position:absolute; inset:-120% -60%;
+      background:conic-gradient(from 0deg, transparent, rgba(0,212,255,.4), transparent 30%);
+      animation:sweep 3.5s linear infinite
+    }
+    @keyframes sweep{to{transform:rotate(360deg)}}
+    .btn > span{position:relative; z-index:1}
+  </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center px-4">
+  <main id="card" class="glass rounded-2xl w-full max-w-3xl p-8 md:p-10">
+    <!-- Title -->
+    <h2 class="text-3xl font-bold text-center mb-6 mark">👨‍✈️ Registered Inspectors</h2>
+
+    {% if inspectors %}
+      <div class="overflow-x-auto">
+        <table class="rounded-lg overflow-hidden">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Date Joined</th>
+              <th>Last Login</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inspector in inspectors %}
+            <tr>
+              <td>{{ inspector.username }}</td>
+              <td>{{ inspector.date_joined|date:"Y-m-d H:i" }}</td>
+              <td>
+                {% if inspector.last_login %}
+                  {{ inspector.last_login|date:"Y-m-d H:i" }}
+                {% else %}
+                  Never
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-gray-400 text-center">No inspectors registered yet.</p>
+    {% endif %}
+
+    <!-- Back button -->
+    <div class="mt-8 text-center">
+      <a href="{% url 'admin_dashboard' %}" class="btn rounded-lg px-6 py-3 inline-block">
+        <span>← Back to Dashboard</span>
+      </a>
+    </div>
+  </main>
+
+  <!-- Animations -->
+  <script>
+    window.addEventListener('DOMContentLoaded', ()=>{
+      gsap.from("#card", {duration:1, y:30, opacity:0, ease:"power3.out"});
+      gsap.from("table", {duration:1, opacity:0, y:20, delay:.3, ease:"power2.out"});
+    });
+  </script>
+</body>
+</html>

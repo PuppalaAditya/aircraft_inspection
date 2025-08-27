@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>Inspector Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+
+  <style>
+    :root {
+      --bg1: #0b0f17;
+      --bg2: #0e1624;
+      --accent: #00d4ff;
+      --accent-2: #7c4dff;
+      --muted: #9aa4b2;
+      --glass: rgba(255,255,255,0.06);
+      --glass-bright: rgba(255,255,255,0.12);
+    }
+
+    html, body { height: 100%; }
+    body {
+      background: radial-gradient(1200px 800px at 80% -20%, #182338 0%, transparent 45%),
+                  radial-gradient(1200px 800px at 0% 120%, #120d26 0%, transparent 45%),
+                  linear-gradient(120deg, var(--bg1), var(--bg2));
+      color: #e8edf6;
+      overflow: hidden;
+    }
+
+    /* Floating gradient orbs */
+    .orb {
+      position: absolute;
+      filter: blur(40px);
+      opacity: 0.35;
+      mix-blend-mode: screen;
+      pointer-events: none;
+    }
+    .orb--a { width: 40vmax; height: 40vmax; background: radial-gradient(circle at 30% 30%, #00d4ff66, transparent 60%); left: -10vmax; top: -10vmax; }
+    .orb--b { width: 35vmax; height: 35vmax; background: radial-gradient(circle at 70% 40%, #7c4dff55, transparent 60%); right: -8vmax; top: 8vmax; }
+    .orb--c { width: 30vmax; height: 30vmax; background: radial-gradient(circle at 50% 50%, #00ffaacc, transparent 60%); left: 10vmax; bottom: -12vmax; opacity: .18; }
+
+    /* Subtle animated grid */
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(transparent 24px, rgba(255,255,255,0.05) 25px) 0 0 / 30px 30px,
+        linear-gradient(90deg, transparent 24px, rgba(255,255,255,0.05) 25px) 0 0 / 30px 30px;
+      mask-image: radial-gradient(1000px 600px at 50% 40%, black 40%, transparent 80%);
+      animation: grid-move 40s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes grid-move {
+      0% { transform: translateY(0) }
+      100% { transform: translateY(30px) }
+    }
+
+    /* Noise texture overlay */
+    .noise {
+      position: absolute; inset: 0;
+      background: url('https://grainy-gradients.vercel.app/noise.svg');
+      opacity: 0.05;
+      pointer-events: none;
+      mix-blend-mode: soft-light;
+    }
+
+    /* Glass card */
+    .glass {
+      background: linear-gradient(180deg, var(--glass), rgba(255,255,255,0.04));
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(16px) saturate(1.2);
+      box-shadow:
+        0 10px 30px rgba(0,0,0,0.45),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
+    /* Input glow */
+    .glow {
+      transition: box-shadow .3s, border-color .3s, transform .15s;
+      border: 1px solid rgba(255,255,255,0.12);
+      background-color: rgba(255,255,255,0.04);
+    }
+    .glow:focus {
+      outline: none;
+      border-color: rgba(0,212,255,0.6);
+      box-shadow: 0 0 0 4px rgba(0,212,255,0.15), 0 0 32px rgba(0,212,255,0.18);
+      transform: translateY(-1px);
+    }
+
+    /* Button */
+    .btn {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: linear-gradient(135deg, rgba(0,212,255,0.20), rgba(124,77,255,0.18));
+      transition: transform .15s ease, box-shadow .2s ease;
+    }
+    .btn:hover { transform: translateY(-1px) scale(1.01); box-shadow: 0 12px 35px rgba(124,77,255,0.25); }
+    .btn::before {
+      content: ""; position: absolute; inset: -120% -60%;
+      background: conic-gradient(from 0deg, transparent, rgba(0,212,255,.4), transparent 30%);
+      transform: rotate(0deg);
+      animation: sweep 3.5s linear infinite;
+    }
+    @keyframes sweep { to { transform: rotate(360deg); } }
+    .btn > span { position: relative; z-index: 1; }
+
+    /* Particle canvas sits behind everything */
+    #stars {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      z-index: 0; pointer-events: none;
+      opacity: .65;
+    }
+
+    /* Header mark */
+    .mark {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 2px 16px rgba(0,212,255,0.35));
+    }
+
+    /* Link underline effect */
+    .fancy-link {
+      position: relative; display: inline-block;
+    }
+    .fancy-link::after {
+      content: ""; position: absolute; left: 0; bottom: -2px; height: 2px; width: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transform: scaleX(.4); transform-origin: left;
+      transition: transform .25s ease;
+    }
+    .fancy-link:hover::after { transform: scaleX(1); }
+  </style>
+</head>
+
+<body class="min-h-screen relative">
+  <!-- Ambient layers -->
+  <canvas id="stars"></canvas>
+  <div class="orb orb--a"></div>
+  <div class="orb orb--b"></div>
+  <div class="orb orb--c"></div>
+  <div class="grid-bg"></div>
+  <div class="noise"></div>
+
+  <!-- Main content -->
+  <main class="relative z-10 min-h-screen flex items-center justify-center px-4">
+    <div id="card"
+         class="glass rounded-2xl w-full max-w-md p-8 md:p-10 will-change-transform">
+
+
+      <!-- Title -->
+      <h1 class="text-3xl md:text-4xl font-extrabold text-center mb-2 leading-tight mark">
+        Inspector Login
+      </h1>
+      <p class="text-center text-sm text-gray-300/80 mb-8">
+        Secure access to the Aircraft Inspection Console
+      </p>
+
+      <!-- Error -->
+      {% if error %}
+        <p class="mb-4 text-center text-sm font-semibold text-red-400 bg-red-500/10 border border-red-400/30 rounded-lg py-2 px-3">
+          {{ error }}
+        </p>
+      {% endif %}
+
+      <!-- Form -->
+      <form method="post" class="space-y-5" id="loginForm">
+        {% csrf_token %}
+        <div>
+          <label class="block text-xs uppercase tracking-widest text-gray-300/70 mb-1">Username</label>
+          <input
+            type="text" name="username" autocomplete="username"
+            class="glow w-full rounded-lg px-4 py-3 bg-white/5 text-gray-100 placeholder-gray-400/70"
+            placeholder="Enter your username" required />
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-widest text-gray-300/70 mb-1">Password</label>
+          <input
+            type="password" name="password" autocomplete="current-password"
+            class="glow w-full rounded-lg px-4 py-3 bg-white/5 text-gray-100 placeholder-gray-400/70"
+            placeholder="••••••••" required />
+        </div>
+
+        <button type="submit"
+                class="btn w-full rounded-lg py-3.5 font-semibold tracking-wide text-white">
+          <span>🔓 Login</span>
+        </button>
+      </form>
+
+      <!-- Footer actions -->
+      <div class="mt-6 text-center">
+        <a href="{% url 'role_select' %}" class="fancy-link text-sm text-gray-200/90">
+          ← Back to Role Selection
+        </a>
+      </div>
+
+      <!-- Tiny meta row -->
+      <div class="mt-5 flex items-center justify-center gap-3 text-[11px] text-gray-400/80">
+        <span class="inline-flex items-center gap-1">
+          <span class="size-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Secure Channel
+        </span>
+        <span>•</span>
+        <span>v1.0</span>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ===== Subtle starfield / particles =====
+    (function () {
+      const canvas = document.getElementById('stars');
+      const ctx = canvas.getContext('2d');
+      let w, h, particles;
+
+      function resize() {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+        particles = Array.from({ length: Math.min(220, Math.floor(w * h / 12000)) }, () => ({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          z: Math.random() * 0.8 + 0.2,
+          vx: (Math.random() - 0.5) * 0.1,
+          vy: (Math.random() - 0.5) * 0.1
+        }));
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      function step() {
+        ctx.clearRect(0, 0, w, h);
+        for (const p of particles) {
+          p.x += p.vx; p.y += p.vy;
+          if (p.x < -50) p.x = w + 50; else if (p.x > w + 50) p.x = -50;
+          if (p.y < -50) p.y = h + 50; else if (p.y > h + 50) p.y = -50;
+          const size = p.z * 1.6;
+          ctx.globalAlpha = 0.65 * p.z;
+          ctx.fillStyle = '#cfe8ff';
+          ctx.fillRect(p.x, p.y, size, size);
+        }
+        // faint connections
+        ctx.globalAlpha = 0.045;
+        ctx.strokeStyle = '#7c4dff';
+        ctx.beginPath();
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < i + 8 && j < particles.length; j++) {
+            const a = particles[i], b = particles[j];
+            const dx = a.x - b.x, dy = a.y - b.y;
+            const d2 = dx*dx + dy*dy;
+            if (d2 < 12000) {
+              ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+            }
+          }
+        }
+        ctx.stroke();
+        requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    })();
+
+    // ===== GSAP animations & interactions =====
+    window.addEventListener('DOMContentLoaded', () => {
+      // Soften entrance
+      gsap.from("#card", {
+        duration: 0.9, y: 22, opacity: 0, ease: "power3.out"
+      });
+
+      // Float the orbs
+      gsap.to(".orb--a", { y: 25, x: 10, duration: 6, yoyo: true, repeat: -1, ease: "sine.inOut" });
+      gsap.to(".orb--b", { y: -20, x: -12, duration: 7.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+      gsap.to(".orb--c", { y: 30, x: -8, duration: 8, yoyo: true, repeat: -1, ease: "sine.inOut" });
+
+      // Interactive tilt
+      const card = document.getElementById('card');
+      let bounds = card.getBoundingClientRect();
+      function handle(e) {
+        const x = (e.clientX - bounds.left) / bounds.width;
+        const y = (e.clientY - bounds.top) / bounds.height;
+        const rx = (y - 0.5) * -10;   // rotateX
+        const ry = (x - 0.5) * 10;    // rotateY
+        gsap.to(card, { rotateX: rx, rotateY: ry, transformPerspective: 900, transformOrigin: "center", duration: 0.3, ease: "power2.out" });
+      }
+      function reset() {
+        gsap.to(card, { rotateX: 0, rotateY: 0, duration: 0.5, ease: "power3.out" });
+      }
+      window.addEventListener('resize', () => bounds = card.getBoundingClientRect());
+      card.addEventListener('mousemove', handle);
+      card.addEventListener('mouseleave', reset);
+
+      // Button press micro-interaction
+      const btn = document.querySelector('button[type="submit"]');
+      btn.addEventListener('mousedown', () => gsap.to(btn, { scale: 0.98, duration: 0.08 }));
+      btn.addEventListener('mouseup',   () => gsap.to(btn, { scale: 1.00, duration: 0.12 }));
+
+      // Simple form fake-progress (optional polish)
+      const form = document.getElementById('loginForm');
+      form.addEventListener('submit', () => {
+        gsap.to(btn, { opacity: 0.75, duration: 0.15 });
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳ Authenticating…</span>';
+      });
+    });
+
+    // slow spin util
+    (function(){
+      const style = document.createElement('style');
+      style.innerHTML = `.animate-spin-slow{animation:spin 6s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`;
+      document.head.appendChild(style);
+    })();
+  </script>
+</body>
+</html>
